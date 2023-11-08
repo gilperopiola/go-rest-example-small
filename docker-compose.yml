@@ -1,0 +1,24 @@
+version: '3'
+
+services:
+
+  go-rest-example-db:
+    image: mariadb:latest
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    env_file:
+      - .env
+
+  go-rest-example:
+    build: .
+    ports:
+      - "8040:8040"
+    depends_on:
+      - go-rest-example-db
+    working_dir: /app
+
+volumes:
+  db_data:
+
