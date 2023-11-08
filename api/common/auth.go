@@ -1,19 +1,72 @@
-package auth
+package common
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/gilperopiola/go-rest-example/pkg/common"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 )
 
-var (
-	pathUserIDKey = "user_id"
+type AuthI interface {
+	GenerateToken(id int, username, email string, role Role) (string, error)
+	ValidateToken(role Role, shouldMatchUserID bool) gin.HandlerFunc
+}
+
+func NewAuth(secret string, sessionDurationDays int) *Auth {
+	return &Auth{
+		secret:              secret,
+		sessionDurationDays: sessionDurationDays,
+	}
+}
+
+type Auth struct {
+	secret              string
+	sessionDurationDays int
+}
+
+type Role string
+
+const (
+	AnyRole   Role = "any"
+	UserRole  Role = "user"
+	AdminRole Role = "admin"
 )
+
+type CustomClaims struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Role     Role   `json:"role"`
+	jwt.RegisteredClaims
+}
+
+func (auth *Auth) GenerateToken(id int, username, email string, role Role) (string, error) {
+
+	var (
+		issuedAt  = time.Now()
+		expiresAt = time.Now().Add(time.Hour * 24 * time.Duration(auth.sessionDurationDays))
+	)
+
+	// Generate claims containing Username, Email, Role and ID
+	claims := &CustomClaims{
+		Username: username,
+		Email:    email,
+		Role:     role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        fmt.Sprint(id),
+			IssuedAt:  jwt.NewNumericDate(issuedAt),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+		},
+	}
+
+	// Generate token (struct)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Generate token (string)
+	return token.SignedString([]byte(auth.secret))
+}
 
 // ValidateToken validates a token for a specific role and sets ID and Email in context
 func (auth *Auth) ValidateToken(role Role, shouldMatchUserID bool) gin.HandlerFunc {
@@ -22,7 +75,7 @@ func (auth *Auth) ValidateToken(role Role, shouldMatchUserID bool) gin.HandlerFu
 		// Get token string and then convert it to a *jwt.Token
 		token, err := auth.getTokenStructFromContext(c)
 		if err != nil {
-			c.Error(common.Wrap("auth.getTokenStructFromContext", common.ErrUnauthorized))
+			c.Error(Wrap("auth.getTokenStructFromContext", ErrUnauthorized))
 			c.Abort()
 			return
 		}
@@ -32,7 +85,7 @@ func (auth *Auth) ValidateToken(role Role, shouldMatchUserID bool) gin.HandlerFu
 
 		// Check if claims and token and role are valid
 		if !ok || !token.Valid || customClaims.Valid() != nil || (role != AnyRole && customClaims.Role != role) {
-			c.Error(common.Wrap("!token.Valid || customClaims.Role != role", common.ErrUnauthorized))
+			c.Error(Wrap("!token.Valid || customClaims.Role != role", ErrUnauthorized))
 			c.Abort()
 			return
 		}
@@ -41,7 +94,7 @@ func (auth *Auth) ValidateToken(role Role, shouldMatchUserID bool) gin.HandlerFu
 		if shouldMatchUserID {
 			urlUserID, err := getIntFromURLPath(c.Params, pathUserIDKey)
 			if err != nil || customClaims.ID != fmt.Sprint(urlUserID) {
-				c.Error(common.Wrap("!shouldMatchUserID", common.ErrUnauthorized))
+				c.Error(Wrap("!shouldMatchUserID", ErrUnauthorized))
 				c.Abort()
 				return
 			}
@@ -79,7 +132,7 @@ func (auth *Auth) decodeTokenString(tokenString string) (*jwt.Token, error) {
 
 	// Check length
 	if len(tokenString) < 40 {
-		return &jwt.Token{}, common.ErrUnauthorized
+		return &jwt.Token{}, ErrUnauthorized
 	}
 
 	// Make key function

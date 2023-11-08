@@ -1,4 +1,4 @@
-# Go REST Example
+# Go REST Example (small)
 
 **`Hey Kidd0!`** If you write (or wanna write) **HTTP REST APIs** in Golang this is your lucky day. 
 

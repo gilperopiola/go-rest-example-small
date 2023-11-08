@@ -1,14 +1,14 @@
-package transport
+package api
 
 import (
 	"fmt"
-	"io"
 	"net/http/pprof"
 
-	"github.com/gilperopiola/go-rest-example/pkg/common/auth"
-	"github.com/gilperopiola/go-rest-example/pkg/common/config"
-	"github.com/gilperopiola/go-rest-example/pkg/common/middleware"
+	"github.com/gilperopiola/go-rest-example/api/common"
+	"github.com/gilperopiola/go-rest-example/api/common/config"
+	"github.com/gilperopiola/go-rest-example/api/endpoints"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,13 +17,13 @@ type router struct {
 	*gin.Engine
 }
 
-func NewRouter(t TransportLayer, cfg *config.Config, auth auth.AuthI, logger *middleware.LoggerAdapter, middlewares ...gin.HandlerFunc) router {
+func NewRouter(h endpoints.Handler, cfg *config.Config, auth common.AuthI, logger *logrus.Logger, middlewares ...gin.HandlerFunc) router {
 	var router router
-	router.setup(t, cfg, auth, logger, middlewares...)
+	router.setup(h, cfg, auth, logger, middlewares...)
 	return router
 }
 
-func (router *router) setup(t TransportLayer, cfg *config.Config, auth auth.AuthI, logger *middleware.LoggerAdapter, middlewares ...gin.HandlerFunc) {
+func (router *router) setup(h endpoints.Handler, cfg *config.Config, auth common.AuthI, logger *logrus.Logger, middlewares ...gin.HandlerFunc) {
 
 	// Create router. Set debug/release mode
 	router.prepare(!cfg.General.Debug, logger)
@@ -34,16 +34,13 @@ func (router *router) setup(t TransportLayer, cfg *config.Config, auth auth.Auth
 	}
 
 	// Set endpoints
-	router.setEndpoints(t, cfg, auth)
+	router.setEndpoints(h, cfg, auth)
 }
 
-func (router *router) prepare(isProd bool, logger *middleware.LoggerAdapter) {
+func (router *router) prepare(isProd bool, logger *logrus.Logger) {
 	if isProd {
 		gin.SetMode(gin.ReleaseMode)
 	}
-
-	gin.DefaultWriter = io.MultiWriter(logger)      // Logger
-	gin.DefaultErrorWriter = io.MultiWriter(logger) // Logger
 
 	router.Engine = gin.New()
 	router.Engine.SetTrustedProxies(nil)
@@ -53,15 +50,15 @@ func (router *router) prepare(isProd bool, logger *middleware.LoggerAdapter) {
 //     ROUTES / ENDPOINTS
 //---------------------------*/
 
-func (router *router) setEndpoints(transport TransportLayer, cfg *config.Config, authI auth.AuthI) {
+func (router *router) setEndpoints(h endpoints.Handler, cfg *config.Config, authI common.AuthI) {
 
 	// Standard endpoints
-	router.GET("/health", transport.healthCheck)
+	router.GET("/health", h.HealthCheck)
 
 	// V1
 	v1 := router.Group("/v1")
 	{
-		router.setV1Endpoints(v1, transport, authI)
+		router.setV1Endpoints(v1, h, authI)
 	}
 
 	// Monitoring
@@ -77,32 +74,32 @@ func (router *router) setEndpoints(transport TransportLayer, cfg *config.Config,
 	fmt.Println("")
 }
 
-func (router *router) setV1Endpoints(v1 *gin.RouterGroup, transport TransportLayer, authI auth.AuthI) {
+func (router *router) setV1Endpoints(v1 *gin.RouterGroup, h endpoints.Handler, authI common.AuthI) {
 
 	// Auth
-	v1.POST("/signup", transport.signup)
-	v1.POST("/login", transport.login)
+	v1.POST("/signup", h.Signup)
+	v1.POST("/login", h.Login)
 
 	// Users
-	users := v1.Group("/users", authI.ValidateToken(auth.AnyRole, true))
+	users := v1.Group("/users", authI.ValidateToken(common.AnyRole, true))
 	{
-		users.GET("/:user_id", transport.getUser)
-		users.PATCH("/:user_id", transport.updateUser)
-		users.DELETE("/:user_id", transport.deleteUser)
-		users.PATCH("/:user_id/password", transport.changePassword)
+		users.GET("/:user_id", h.GetUser)
+		users.PATCH("/:user_id", h.UpdateUser)
+		users.DELETE("/:user_id", h.DeleteUser)
+		users.PATCH("/:user_id/password", h.ChangePassword)
 
 		// User posts
 		posts := users.Group("/:user_id/posts")
 		{
-			posts.POST("", transport.createUserPost)
+			posts.POST("", h.CreateUserPost)
 		}
 	}
 
 	// Admins
-	admin := v1.Group("/admin", authI.ValidateToken(auth.AdminRole, false))
+	admin := v1.Group("/admin", authI.ValidateToken(common.AdminRole, false))
 	{
-		admin.POST("/user", transport.createUser)
-		admin.GET("/users", transport.searchUsers)
+		admin.POST("/user", h.CreateUser)
+		admin.GET("/users", h.SearchUsers)
 	}
 }
 

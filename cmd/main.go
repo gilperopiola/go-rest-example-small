@@ -3,12 +3,11 @@ package main
 import (
 	"log"
 
-	"github.com/gilperopiola/go-rest-example/pkg/common/auth"
-	"github.com/gilperopiola/go-rest-example/pkg/common/config"
-	"github.com/gilperopiola/go-rest-example/pkg/common/middleware"
-	"github.com/gilperopiola/go-rest-example/pkg/repository"
-	"github.com/gilperopiola/go-rest-example/pkg/service"
-	"github.com/gilperopiola/go-rest-example/pkg/transport"
+	"github.com/gilperopiola/go-rest-example/api"
+	"github.com/gilperopiola/go-rest-example/api/common"
+	"github.com/gilperopiola/go-rest-example/api/common/config"
+	"github.com/gilperopiola/go-rest-example/api/endpoints"
+	"github.com/sirupsen/logrus"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,44 +26,38 @@ func main() {
 	config := config.New()
 	log.Println("Config OK")
 
-	logger := middleware.NewLogger(config.General.LogInfo)
-	logger.Logger.Info("Logger OK", nil)
+	logger := logrus.New()
+	logger.Info("Logger OK", nil)
 
 	middlewares := []gin.HandlerFunc{
 		gin.Recovery(), // Panic recovery
-		middleware.NewRateLimiterMiddleware(middleware.NewRateLimiter(200)),                     // Rate Limiter
-		middleware.NewCORSConfigMiddleware(),                                                    // CORS
-		middleware.NewNewRelicMiddleware(middleware.NewNewRelic(config.Monitoring, logger)),     // New Relic (monitoring)
-		middleware.NewPrometheusMiddleware(middleware.NewPrometheus(config.Monitoring, logger)), // Prometheus (metrics)
-		middleware.NewTimeoutMiddleware(config.General.Timeout),                                 // Timeout
-		middleware.NewErrorHandlerMiddleware(logger),                                            // Error Handler
+		common.NewRateLimiterMiddleware(common.NewRateLimiter(200)),                     // Rate Limiter
+		common.NewCORSConfigMiddleware(),                                                // CORS
+		common.NewNewRelicMiddleware(common.NewNewRelic(config.Monitoring, logger)),     // New Relic (monitoring)
+		common.NewPrometheusMiddleware(common.NewPrometheus(config.Monitoring, logger)), // Prometheus (metrics)
+		common.NewTimeoutMiddleware(config.General.Timeout),                             // Timeout
+		common.NewErrorHandlerMiddleware(logger),                                        // Error Handler
 	}
-	logger.Logger.Info("Middlewares OK", nil)
+	logger.Info("Middlewares OK", nil)
 
-	auth := auth.New(config.Auth.JWTSecret, config.Auth.SessionDurationDays)
-	logger.Logger.Info("Auth OK", nil)
+	auth := common.NewAuth(config.Auth.JWTSecret, config.Auth.SessionDurationDays)
+	logger.Info("Auth OK", nil)
 
-	database := repository.NewDatabase(config, logger)
-	logger.Logger.Info("Database OK", nil)
+	database := common.NewDatabase(config, logger)
+	logger.Info("Database OK", nil)
 
-	repositoryLayer := repository.New(database)
-	logger.Logger.Info("Repository Layer OK", nil)
+	handler := endpoints.NewHandler(config, database.DB)
+	logger.Info("Handler OK", nil)
 
-	serviceLayer := service.New(repositoryLayer, auth, config)
-	logger.Logger.Info("Service Layer OK", nil)
-
-	transportLayer := transport.New(serviceLayer)
-	logger.Logger.Info("Transport Layer OK", nil)
-
-	router := transport.NewRouter(transportLayer, config, auth, logger, middlewares...)
-	logger.Logger.Info("Router & Endpoints OK", nil)
+	router := api.NewRouter(handler, config, auth, logger, middlewares...)
+	logger.Info("Router & Endpoints OK", nil)
 
 	/*---------------------------
 	//       START SERVER
 	//--------------------------*/
 
 	port := config.General.Port
-	logger.Logger.Info("Running server on port "+port, nil)
+	logger.Info("Running server on port "+port, nil)
 
 	err := router.Run(":" + port)
 	if err != nil {

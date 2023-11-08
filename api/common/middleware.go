@@ -1,18 +1,130 @@
-package middleware
+package common
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gilperopiola/go-rest-example/pkg/common"
-	"github.com/gilperopiola/go-rest-example/pkg/common/config"
+	"github.com/gilperopiola/go-rest-example/api/common/config"
+	"github.com/sirupsen/logrus"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/timeout"
 	"github.com/gin-gonic/gin"
+	"github.com/newrelic/go-agent/v3/integrations/nrgin"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/time/rate"
 )
+
+func NewCORSConfigMiddleware() gin.HandlerFunc {
+	return cors.New(cors.Config{
+		AllowAllOrigins:  true,
+		AllowCredentials: true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Authentication", "Authorization", "Content-Type"},
+		ExposeHeaders:    []string{"Authentication", "Authorization", "Content-Type"},
+	})
+}
+
+func NewErrorHandlerMiddleware(logger *logrus.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		// Wait until the request is finished
+		c.Next()
+
+		// Then, check the context for errors
+		if len(c.Errors) == 0 {
+			return
+		}
+
+		// If there are errors, get the last one
+		err := c.Errors.Last()
+
+		statusCode, humanReadable, stackTrace := getErrorInfo(err)
+		method := c.Request.Method
+
+		// Log the error depending on severity
+		logStackTrace(logger, statusCode, stackTrace, c.Request.URL.Path, method)
+
+		c.JSON(statusCode, HTTPResponse{
+			Success: false,
+			Content: nil,
+			Error:   humanReadable,
+		})
+	}
+}
+
+// getErrorInfo returns the status, the human-readable string & the stack trace of the error
+func getErrorInfo(err error) (int, string, string) {
+	var (
+		stackTrace = err.Error()
+		messages   []string
+		lastErr    error
+	)
+
+	// Unwrap the error and get all the messages
+	for err != nil {
+		messages = append(messages, err.Error())
+		lastErr = err
+		err = errors.Unwrap(err)
+	}
+
+	// Assert the type of the second-to-last error
+	customErr, ok := lastErr.(*Error)
+	if !ok {
+		// Return 500 if not custom error
+		return http.StatusInternalServerError, err.Error(), stackTrace
+	}
+
+	// Return status, custom error (second-to-last one) and stack trace
+	return customErr.Status(), messages[len(messages)-1], stackTrace
+}
+
+func logStackTrace(logger *logrus.Logger, status int, stackTrace, path, method string) {
+	logContext := logger.WithField("status", status).WithField("path", path).WithField("method", method)
+	logContext.Error(stackTrace)
+}
+
+func NewNewRelicMiddleware(app *newrelic.Application) gin.HandlerFunc {
+	return nrgin.Middleware(app)
+}
+
+func NewNewRelic(config config.Monitoring, logger *logrus.Logger) *newrelic.Application {
+
+	// If New Relic is not enabled, return empty app
+	if !config.NewRelicEnabled {
+		logger.Info("New Relic Disabled")
+		return nil
+	}
+
+	// If monitoring is enabled, use license to create New Relic app
+	license := config.NewRelicLicenseKey
+	if license == "" {
+		logger.Error("New Relic license not found")
+		os.Exit(1)
+	}
+
+	// Create app
+	newRelicApp, err := newrelic.NewApplication(
+		newrelic.ConfigAppName(config.NewRelicAppName),
+		newrelic.ConfigLicense(license),
+		newrelic.ConfigAppLogForwardingEnabled(true),
+		newrelic.ConfigDistributedTracerEnabled(true),
+	)
+
+	// Panic on failure
+	if err != nil {
+		logger.Info(fmt.Sprintf("Failed to start New Relic: %v", err))
+		os.Exit(1)
+	}
+
+	return newRelicApp
+}
 
 func NewPrometheusMiddleware(p *Prometheus) gin.HandlerFunc {
 	if p != nil {
@@ -24,9 +136,9 @@ func NewPrometheusMiddleware(p *Prometheus) gin.HandlerFunc {
 	}
 }
 
-func NewPrometheus(cfg config.Monitoring, logger *LoggerAdapter) *Prometheus {
+func NewPrometheus(cfg config.Monitoring, logger *logrus.Logger) *Prometheus {
 	if !cfg.PrometheusEnabled {
-		logger.Logger.Info("Prometheus disabled", map[string]interface{}{"from": common.Prometheus.String()})
+		logger.Info("Prometheus disabled")
 		return nil
 	}
 
@@ -84,7 +196,7 @@ type Prometheus struct {
 
 	replaceURLKeys func(c *gin.Context) string
 
-	logger *LoggerAdapter
+	logger *logrus.Logger
 }
 
 // prometheus.Collector type (i.e. CounterVec, Summary, etc) of each metric
@@ -221,12 +333,7 @@ func (p *Prometheus) registerMetrics(subsystem string) {
 	for _, metricDefinition := range p.metricsList {
 		metric := NewMetric(metricDefinition, subsystem)
 		if err := prometheus.Register(metric); err != nil {
-			p.logger.Logger.Error(
-				err.Error(),
-				map[string]interface{}{
-					"error": fmt.Errorf("%s could not be registered in Prometheus", metricDefinition.Name),
-					"from":  common.Prometheus.String(),
-				})
+			p.logger.Error(err.Error())
 		}
 		switch metricDefinition {
 		case metricTotalRequests:
@@ -241,7 +348,7 @@ func (p *Prometheus) registerMetrics(subsystem string) {
 		metricDefinition.MetricCollector = metric
 	}
 
-	p.logger.Logger.Info("Prometheus metrics registered", map[string]interface{}{"from": common.Prometheus.String()})
+	p.logger.Info("Prometheus metrics registered")
 }
 
 // From https://github.com/DanielHeckrath/gin-prometheus/blob/master/gin_prometheus.go
@@ -280,4 +387,28 @@ func replaceURLKeys(c *gin.Context) string {
 		}
 	}
 	return url
+}
+
+func NewRateLimiterMiddleware(limiter *rate.Limiter) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !limiter.Allow() {
+			c.Error(ErrTooManyRequests)
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func NewRateLimiter(requestsPerSecond int) *rate.Limiter { // TODO RPS to Config var
+	return rate.NewLimiter(rate.Every(time.Second/time.Duration(requestsPerSecond)), requestsPerSecond)
+}
+
+func NewTimeoutMiddleware(timeoutSeconds int) gin.HandlerFunc {
+	return timeout.New(
+		timeout.WithTimeout(time.Duration(timeoutSeconds)*time.Second),
+		timeout.WithHandler(func(c *gin.Context) {
+			c.Next()
+		}),
+	)
 }
