@@ -1,31 +1,48 @@
 package endpoints
 
 import (
-	"github.com/gilperopiola/go-rest-example/api/common"
+	"errors"
+
+	"github.com/gilperopiola/go-rest-example-small/api/common"
+
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func (h *handler) DeleteUser(c *gin.Context) {
-	HandleRequest(c, h.makeSignupRequest, h.signup)
+	HandleRequest(c, h.makeDeleteUserRequest, h.deleteUser)
 }
 
-func (h *handler) deleteUser(c *gin.Context, request *common.SignupRequest) (common.SignupResponse, error) {
-	return common.SignupResponse{}, nil
-}
-
-func (h *handler) makeDeleteUserRequest(c *gin.Context) (req *common.SignupRequest, err error) {
-
-	if err = c.ShouldBindJSON(&req); err != nil {
-		return &common.SignupRequest{}, common.Wrap(err.Error(), common.ErrBindingRequest)
-	}
-
-	if err = validateUsernameEmailAndPassword(req.Username, req.Email, req.Password); err != nil {
-		return &common.SignupRequest{}, common.Wrap("makeSignupRequest", err)
-	}
-
-	if req.Password != req.RepeatPassword {
-		return &common.SignupRequest{}, common.Wrap("makeSignupRequest", common.ErrPasswordsDontMatch)
+func (h *handler) makeDeleteUserRequest(c *gin.Context) (req *common.DeleteUserRequest, err error) {
+	req = &common.DeleteUserRequest{UserID: c.GetInt(contextUserIDKey)}
+	if req.UserID == 0 {
+		return &common.DeleteUserRequest{}, common.ErrAllFieldsRequired
 	}
 
 	return req, nil
+}
+
+func (h *handler) deleteUser(c *gin.Context, request *common.DeleteUserRequest) (common.DeleteUserResponse, error) {
+	user := request.ToUserModel()
+
+	// Get user
+	query := "(id = ?)"
+	if err := h.db.Where(query, user.ID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return common.DeleteUserResponse{}, common.Wrap(err.Error(), common.ErrUserNotFound)
+		}
+		return common.DeleteUserResponse{}, common.Wrap(err.Error(), common.ErrGettingUser)
+	}
+
+	// If already deleted
+	if user.Deleted {
+		return common.DeleteUserResponse{}, common.Wrap("deleteUser: user.Deleted", common.ErrUserAlreadyDeleted)
+	}
+
+	// Delete user
+	if err := h.db.Model(&user).Update("deleted", true).Error; err != nil {
+		return common.DeleteUserResponse{}, common.Wrap(err.Error(), common.ErrDeletingUser)
+	}
+
+	return common.DeleteUserResponse{User: user.ToResponseModel()}, nil
 }

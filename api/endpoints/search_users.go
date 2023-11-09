@@ -1,31 +1,55 @@
 package endpoints
 
 import (
-	"github.com/gilperopiola/go-rest-example/api/common"
+	"strconv"
+
+	"github.com/gilperopiola/go-rest-example-small/api/common"
 	"github.com/gin-gonic/gin"
 )
 
 func (h *handler) SearchUsers(c *gin.Context) {
-	HandleRequest(c, h.makeSignupRequest, h.signup)
+	HandleRequest(c, h.makeSearchUsersRequest, h.searchUsers)
 }
 
-func (h *handler) searchUsers(c *gin.Context, request *common.SignupRequest) (common.SignupResponse, error) {
-	return common.SignupResponse{}, nil
-}
+func (h *handler) makeSearchUsersRequest(c *gin.Context) (req *common.SearchUsersRequest, err error) {
 
-func (h *handler) makeSearchUsersRequest(c *gin.Context) (req *common.SignupRequest, err error) {
+	defaultPage := "0"
+	defaultPerPage := "10"
 
-	if err = c.ShouldBindJSON(&req); err != nil {
-		return &common.SignupRequest{}, common.Wrap(err.Error(), common.ErrBindingRequest)
+	req = &common.SearchUsersRequest{Username: c.Query("username")}
+
+	req.Page, err = strconv.Atoi(c.DefaultQuery("page", defaultPage))
+	if err != nil {
+		return &common.SearchUsersRequest{}, common.ErrInvalidValue("page")
 	}
 
-	if err = validateUsernameEmailAndPassword(req.Username, req.Email, req.Password); err != nil {
-		return &common.SignupRequest{}, common.Wrap("makeSignupRequest", err)
+	req.PerPage, err = strconv.Atoi(c.DefaultQuery("per_page", defaultPerPage))
+	if err != nil {
+		return &common.SearchUsersRequest{}, common.ErrInvalidValue("per_page")
 	}
 
-	if req.Password != req.RepeatPassword {
-		return &common.SignupRequest{}, common.Wrap("makeSignupRequest", common.ErrPasswordsDontMatch)
+	if req.Page < 0 || req.PerPage <= 0 {
+		return &common.SearchUsersRequest{}, common.ErrAllFieldsRequired
 	}
 
 	return req, nil
+}
+
+func (h *handler) searchUsers(c *gin.Context, request *common.SearchUsersRequest) (common.SearchUsersResponse, error) {
+	var (
+		users   common.Users
+		page    = request.Page
+		perPage = request.PerPage
+	)
+
+	query := h.db.Preload("Details").Where("username LIKE ?", "%"+request.Username+"%")
+	if err := query.Offset(page * perPage).Limit(perPage).Find(&users).Error; err != nil {
+		return common.SearchUsersResponse{}, common.Wrap(err.Error(), common.ErrSearchingUsers)
+	}
+
+	return common.SearchUsersResponse{
+		Users:   users.ToResponseModel(),
+		Page:    page,
+		PerPage: perPage,
+	}, nil
 }

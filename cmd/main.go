@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 
-	"github.com/gilperopiola/go-rest-example/api"
-	"github.com/gilperopiola/go-rest-example/api/common"
-	"github.com/gilperopiola/go-rest-example/api/common/config"
-	"github.com/gilperopiola/go-rest-example/api/endpoints"
+	"github.com/gilperopiola/go-rest-example-small/api"
+	"github.com/gilperopiola/go-rest-example-small/api/common"
+	"github.com/gilperopiola/go-rest-example-small/api/common/config"
+	"github.com/gilperopiola/go-rest-example-small/api/endpoints"
 	"github.com/sirupsen/logrus"
 
 	"github.com/gin-gonic/gin"
@@ -46,7 +46,7 @@ func main() {
 	database := common.NewDatabase(config, logger)
 	logger.Info("Database OK", nil)
 
-	handler := endpoints.NewHandler(config, database.DB)
+	handler := endpoints.NewHandler(config, database.DB, auth)
 	logger.Info("Handler OK", nil)
 
 	router := api.NewRouter(handler, config, auth, logger, middlewares...)

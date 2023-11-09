@@ -2,7 +2,7 @@
 
 **`Hey Kidd0!`** If you write (or wanna write) **HTTP REST APIs** in Golang this is your lucky day. 
 
-Here you have **`Easy To Follow Code`** without having to learn an entire framework. Is it perfect? **Yes**. Well no, but it's pretty easy to understand and modify and extend. It has that **`Simplicity`** most other boilerplates don't, it has a fuckload of features and it's actually quite solid and robust, perfect for a large microservice. If your project is smaller, you should check out [v1.2.0](https://github.com/gilperopiola/go-rest-example/releases/tag/v1.2.0). 
+Here you have **`Easy To Follow Code`** without having to learn an entire framework. Is it perfect? **Yes**. Well no, but it's pretty easy to understand and modify and extend. It has that **`Simplicity`** most other boilerplates don't, it has a fuckload of features and it's actually quite solid and robust, perfect for a large microservice. If your project is smaller, you should check out [v1.2.0](https://github.com/gilperopiola/go-rest-example-small/releases/tag/v1.2.0). 
 
 ## Features
 
@@ -17,7 +17,7 @@ Here you have **`Easy To Follow Code`** without having to learn an entire framew
 
 ## Interested? ;)
 
-Here below lies the installation and configuration guide (it's pretty short, I swear), and on the [**`README2.md`**](https://github.com/gilperopiola/go-rest-example/blob/master/README2.md) file you will find a small guide that will help you on this beautiful journey you've embarked.
+Here below lies the installation and configuration guide (it's pretty short, I swear), and on the [**`README2.md`**](https://github.com/gilperopiola/go-rest-example-small/blob/master/README2.md) file you will find a small guide that will help you on this beautiful journey you've embarked.
 
 ## Installation and Usage
 

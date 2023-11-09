@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gilperopiola/go-rest-example/api/common/config"
+	"github.com/gilperopiola/go-rest-example-small/api/common/config"
 	"github.com/sirupsen/logrus"
 
 	"github.com/gin-contrib/cors"

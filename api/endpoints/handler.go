@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/gilperopiola/go-rest-example/api/common"
-	"github.com/gilperopiola/go-rest-example/api/common/config"
+	"github.com/gilperopiola/go-rest-example-small/api/common"
+	"github.com/gilperopiola/go-rest-example-small/api/common/config"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -16,6 +16,7 @@ type Handler interface {
 	signup(c *gin.Context, request *common.SignupRequest) (common.SignupResponse, error)
 
 	Login(c *gin.Context)
+	login(c *gin.Context, request *common.LoginRequest) (common.LoginResponse, error)
 
 	CreateUser(c *gin.Context)
 
@@ -37,16 +38,18 @@ type Handler interface {
 type handler struct {
 	config *config.Config
 	db     *gorm.DB
+	auth   *common.Auth
 }
 
-func NewHandler(config *config.Config, db *gorm.DB) *handler {
+func NewHandler(config *config.Config, db *gorm.DB, auth *common.Auth) *handler {
 	return &handler{
 		db:     db,
 		config: config,
+		auth:   auth,
 	}
 }
 
-func HandleRequest[req common.All, resp common.AllResponses](c *gin.Context, makeRequestFn func(*gin.Context) (req, error), serviceCallFn func(*gin.Context, req) (resp, error)) {
+func HandleRequest[req common.AllRequests, resp common.AllResponses](c *gin.Context, makeRequestFn func(*gin.Context) (req, error), serviceCallFn func(*gin.Context, req) (resp, error)) {
 
 	// Build, validate and get request
 	request, err := makeRequestFn(c)
@@ -74,6 +77,8 @@ func HandleRequest[req common.All, resp common.AllResponses](c *gin.Context, mak
 //---------------------*/
 
 var (
+	contextUserIDKey = "UserID"
+
 	usernameMinLength = 4
 	usernameMaxLength = 32
 	passwordMinLength = 8

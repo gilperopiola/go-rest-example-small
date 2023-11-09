@@ -59,13 +59,13 @@ type ChangePasswordResponse struct {
 	User ResponseUser `json:"user"`
 }
 
-/*-----------------------
-//      USER POSTS
-//---------------------*/
-
 type CreateUserPostResponse struct {
 	UserPost ResponseUserPost `json:"user_post"`
 }
+
+/*-----------------------
+//    RESPONSE MODELS
+//---------------------*/
 
 type ResponseUser struct {
 	ID        int                `json:"id"`

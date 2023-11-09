@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/gilperopiola/go-rest-example/api/common/config"
+	"github.com/gilperopiola/go-rest-example-small/api/common/config"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

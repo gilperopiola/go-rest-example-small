@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"net/http/pprof"
 
-	"github.com/gilperopiola/go-rest-example/api/common"
-	"github.com/gilperopiola/go-rest-example/api/common/config"
-	"github.com/gilperopiola/go-rest-example/api/endpoints"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
+	"github.com/gilperopiola/go-rest-example-small/api/common"
+	"github.com/gilperopiola/go-rest-example-small/api/common/config"
+	"github.com/gilperopiola/go-rest-example-small/api/endpoints"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
 )
 
 type router struct {

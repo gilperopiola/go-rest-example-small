@@ -1,4 +1,4 @@
-module github.com/gilperopiola/go-rest-example
+module github.com/gilperopiola/go-rest-example-small
 
 go 1.20
 

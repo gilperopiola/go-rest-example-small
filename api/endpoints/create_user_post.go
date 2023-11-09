@@ -1,31 +1,35 @@
 package endpoints
 
 import (
-	"github.com/gilperopiola/go-rest-example/api/common"
+	"github.com/gilperopiola/go-rest-example-small/api/common"
+
 	"github.com/gin-gonic/gin"
 )
 
 func (h *handler) CreateUserPost(c *gin.Context) {
-	HandleRequest(c, h.makeSignupRequest, h.signup)
+	HandleRequest(c, h.makeCreateUserPostRequest, h.createUserPost)
 }
 
-func (h *handler) createUserPost(c *gin.Context, request *common.SignupRequest) (common.SignupResponse, error) {
-	return common.SignupResponse{}, nil
-}
-
-func (h *handler) makeCreateUserPostRequest(c *gin.Context) (req *common.SignupRequest, err error) {
+func (h *handler) makeCreateUserPostRequest(c *gin.Context) (req *common.CreateUserPostRequest, err error) {
 
 	if err = c.ShouldBindJSON(&req); err != nil {
-		return &common.SignupRequest{}, common.Wrap(err.Error(), common.ErrBindingRequest)
+		return &common.CreateUserPostRequest{}, common.Wrap(err.Error(), common.ErrBindingRequest)
 	}
 
-	if err = validateUsernameEmailAndPassword(req.Username, req.Email, req.Password); err != nil {
-		return &common.SignupRequest{}, common.Wrap("makeSignupRequest", err)
-	}
-
-	if req.Password != req.RepeatPassword {
-		return &common.SignupRequest{}, common.Wrap("makeSignupRequest", common.ErrPasswordsDontMatch)
+	req.UserID = c.GetInt(contextUserIDKey)
+	if req.UserID == 0 || req.Title == "" {
+		return &common.CreateUserPostRequest{}, common.ErrAllFieldsRequired
 	}
 
 	return req, nil
+}
+
+func (h *handler) createUserPost(c *gin.Context, request *common.CreateUserPostRequest) (common.CreateUserPostResponse, error) {
+	userPost := request.ToUserPostModel()
+
+	if err := h.db.Create(&userPost).Error; err != nil {
+		return common.CreateUserPostResponse{}, common.Wrap(err.Error(), common.ErrCreatingUserPost)
+	}
+
+	return common.CreateUserPostResponse{UserPost: userPost.ToResponseModel()}, nil
 }
