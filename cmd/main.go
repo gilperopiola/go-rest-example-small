@@ -5,11 +5,10 @@ import (
 
 	"github.com/gilperopiola/go-rest-example-small/api"
 	"github.com/gilperopiola/go-rest-example-small/api/common"
-	"github.com/gilperopiola/go-rest-example-small/api/common/config"
 	"github.com/gilperopiola/go-rest-example-small/api/endpoints"
-	"github.com/sirupsen/logrus"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // Note: This is the entrypoint of the application.
@@ -23,11 +22,11 @@ func main() {
 	//      DEPENDENCIES
 	//------------------------*/
 
-	config := config.New()
+	config := common.NewConfig()
 	log.Println("Config OK")
 
 	logger := logrus.New()
-	logger.Info("Logger OK", nil)
+	logger.Info("Logger OK")
 
 	middlewares := []gin.HandlerFunc{
 		gin.Recovery(), // Panic recovery
@@ -35,31 +34,30 @@ func main() {
 		common.NewCORSConfigMiddleware(),                                                // CORS
 		common.NewNewRelicMiddleware(common.NewNewRelic(config.Monitoring, logger)),     // New Relic (monitoring)
 		common.NewPrometheusMiddleware(common.NewPrometheus(config.Monitoring, logger)), // Prometheus (metrics)
-		common.NewTimeoutMiddleware(config.General.Timeout),                             // Timeout
+		common.NewTimeoutMiddleware(45),                                                 // Timeout
 		common.NewErrorHandlerMiddleware(logger),                                        // Error Handler
 	}
-	logger.Info("Middlewares OK", nil)
+	logger.Info("Middlewares OK")
 
-	auth := common.NewAuth(config.Auth.JWTSecret, config.Auth.SessionDurationDays)
-	logger.Info("Auth OK", nil)
+	auth := common.NewAuth(config.JWTSecret, 7)
+	logger.Info("Auth OK")
 
 	database := common.NewDatabase(config, logger)
-	logger.Info("Database OK", nil)
+	logger.Info("Database OK")
 
 	handler := endpoints.NewHandler(config, database.DB, auth)
-	logger.Info("Handler OK", nil)
+	logger.Info("Handler OK")
 
-	router := api.NewRouter(handler, config, auth, logger, middlewares...)
-	logger.Info("Router & Endpoints OK", nil)
+	router := api.NewRouter(handler, config, auth, middlewares...)
+	logger.Info("Router & Endpoints OK")
 
 	/*---------------------------
 	//       START SERVER
 	//--------------------------*/
 
-	port := config.General.Port
-	logger.Info("Running server on port "+port, nil)
+	logger.Info("Running server on port " + config.Port)
 
-	err := router.Run(":" + port)
+	err := router.Run(":" + config.Port)
 	if err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

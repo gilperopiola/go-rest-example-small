@@ -1,6 +1,7 @@
 package common
 
 import (
+	"regexp"
 	"time"
 )
 
@@ -22,6 +23,7 @@ func (r *SignupRequest) ToUserModel() User {
 
 func (r *LoginRequest) ToUserModel() User {
 	user := User{Password: r.Password}
+	validEmailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 	if validEmailRegex.MatchString(r.UsernameOrEmail) {
 		user.Email = r.UsernameOrEmail

@@ -13,16 +13,16 @@ func (h *handler) DeleteUser(c *gin.Context) {
 	HandleRequest(c, h.makeDeleteUserRequest, h.deleteUser)
 }
 
-func (h *handler) makeDeleteUserRequest(c *gin.Context) (req *common.DeleteUserRequest, err error) {
-	req = &common.DeleteUserRequest{UserID: c.GetInt(contextUserIDKey)}
+func (h *handler) makeDeleteUserRequest(c *gin.Context) (req common.DeleteUserRequest, err error) {
+	req.UserID = c.GetInt(contextUserIDKey)
 	if req.UserID == 0 {
-		return &common.DeleteUserRequest{}, common.ErrAllFieldsRequired
+		return common.DeleteUserRequest{}, common.ErrAllFieldsRequired
 	}
 
 	return req, nil
 }
 
-func (h *handler) deleteUser(c *gin.Context, request *common.DeleteUserRequest) (common.DeleteUserResponse, error) {
+func (h *handler) deleteUser(c *gin.Context, request common.DeleteUserRequest) (common.DeleteUserResponse, error) {
 	user := request.ToUserModel()
 
 	// Get user

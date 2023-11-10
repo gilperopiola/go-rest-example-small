@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gilperopiola/go-rest-example-small/api/common"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,31 +12,31 @@ func (h *handler) SearchUsers(c *gin.Context) {
 	HandleRequest(c, h.makeSearchUsersRequest, h.searchUsers)
 }
 
-func (h *handler) makeSearchUsersRequest(c *gin.Context) (req *common.SearchUsersRequest, err error) {
+func (h *handler) makeSearchUsersRequest(c *gin.Context) (req common.SearchUsersRequest, err error) {
 
 	defaultPage := "0"
 	defaultPerPage := "10"
 
-	req = &common.SearchUsersRequest{Username: c.Query("username")}
+	req.Username = c.Query("username")
 
 	req.Page, err = strconv.Atoi(c.DefaultQuery("page", defaultPage))
 	if err != nil {
-		return &common.SearchUsersRequest{}, common.ErrInvalidValue("page")
+		return common.SearchUsersRequest{}, common.ErrInvalidValue("page")
 	}
 
 	req.PerPage, err = strconv.Atoi(c.DefaultQuery("per_page", defaultPerPage))
 	if err != nil {
-		return &common.SearchUsersRequest{}, common.ErrInvalidValue("per_page")
+		return common.SearchUsersRequest{}, common.ErrInvalidValue("per_page")
 	}
 
 	if req.Page < 0 || req.PerPage <= 0 {
-		return &common.SearchUsersRequest{}, common.ErrAllFieldsRequired
+		return common.SearchUsersRequest{}, common.ErrAllFieldsRequired
 	}
 
 	return req, nil
 }
 
-func (h *handler) searchUsers(c *gin.Context, request *common.SearchUsersRequest) (common.SearchUsersResponse, error) {
+func (h *handler) searchUsers(c *gin.Context, request common.SearchUsersRequest) (common.SearchUsersResponse, error) {
 	var (
 		users   common.Users
 		page    = request.Page

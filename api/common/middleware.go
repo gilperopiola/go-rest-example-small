@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gilperopiola/go-rest-example-small/api/common/config"
 	"github.com/sirupsen/logrus"
 
 	"github.com/gin-contrib/cors"
@@ -94,7 +93,7 @@ func NewNewRelicMiddleware(app *newrelic.Application) gin.HandlerFunc {
 	return nrgin.Middleware(app)
 }
 
-func NewNewRelic(config config.Monitoring, logger *logrus.Logger) *newrelic.Application {
+func NewNewRelic(config Monitoring, logger *logrus.Logger) *newrelic.Application {
 
 	// If New Relic is not enabled, return empty app
 	if !config.NewRelicEnabled {
@@ -136,7 +135,7 @@ func NewPrometheusMiddleware(p *Prometheus) gin.HandlerFunc {
 	}
 }
 
-func NewPrometheus(cfg config.Monitoring, logger *logrus.Logger) *Prometheus {
+func NewPrometheus(cfg Monitoring, logger *logrus.Logger) *Prometheus {
 	if !cfg.PrometheusEnabled {
 		logger.Info("Prometheus disabled")
 		return nil

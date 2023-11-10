@@ -14,32 +14,32 @@ func (h *handler) UpdateUser(c *gin.Context) {
 	HandleRequest(c, h.makeUpdateUserRequest, h.updateUser)
 }
 
-func (h *handler) makeUpdateUserRequest(c *gin.Context) (req *common.UpdateUserRequest, err error) {
+func (h *handler) makeUpdateUserRequest(c *gin.Context) (req common.UpdateUserRequest, err error) {
 
 	if err = c.ShouldBindJSON(&req); err != nil {
-		return &common.UpdateUserRequest{}, common.Wrap(err.Error(), common.ErrBindingRequest)
+		return common.UpdateUserRequest{}, common.Wrap(err.Error(), common.ErrBindingRequest)
 	}
 
 	req.UserID = c.GetInt(contextUserIDKey)
 
 	if req.UserID == 0 || (req.Email == "" && req.Username == "" && req.FirstName == nil && req.LastName == nil) {
-		return &common.UpdateUserRequest{}, common.ErrAllFieldsRequired
+		return common.UpdateUserRequest{}, common.ErrAllFieldsRequired
 	}
 
 	if req.Email != "" && !validEmailRegex.MatchString(req.Email) {
-		return &common.UpdateUserRequest{}, common.ErrInvalidEmailFormat
+		return common.UpdateUserRequest{}, common.ErrInvalidEmailFormat
 	}
 
 	if req.Username != "" {
 		if len(req.Username) < usernameMinLength || len(req.Username) > usernameMaxLength {
-			return &common.UpdateUserRequest{}, common.ErrInvalidUsernameLength(usernameMinLength, usernameMaxLength)
+			return common.UpdateUserRequest{}, common.ErrInvalidUsernameLength(usernameMinLength, usernameMaxLength)
 		}
 	}
 
 	return req, nil
 }
 
-func (h *handler) updateUser(c *gin.Context, request *common.UpdateUserRequest) (common.UpdateUserResponse, error) {
+func (h *handler) updateUser(c *gin.Context, request common.UpdateUserRequest) (common.UpdateUserResponse, error) {
 	user := request.ToUserModel()
 
 	// Get user

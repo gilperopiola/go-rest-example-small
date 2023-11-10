@@ -5,43 +5,31 @@ import (
 	"regexp"
 
 	"github.com/gilperopiola/go-rest-example-small/api/common"
-	"github.com/gilperopiola/go-rest-example-small/api/common/config"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 type Handler interface {
-	Signup(c *gin.Context)
-	signup(c *gin.Context, request *common.SignupRequest) (common.SignupResponse, error)
-
-	Login(c *gin.Context)
-	login(c *gin.Context, request *common.LoginRequest) (common.LoginResponse, error)
-
-	CreateUser(c *gin.Context)
-
-	GetUser(c *gin.Context)
-
-	UpdateUser(c *gin.Context)
-
-	DeleteUser(c *gin.Context)
-
-	SearchUsers(c *gin.Context)
-
-	ChangePassword(c *gin.Context)
-
-	CreateUserPost(c *gin.Context)
-
 	HealthCheck(c *gin.Context)
+	Signup(c *gin.Context)
+	Login(c *gin.Context)
+	CreateUser(c *gin.Context)
+	GetUser(c *gin.Context)
+	UpdateUser(c *gin.Context)
+	DeleteUser(c *gin.Context)
+	SearchUsers(c *gin.Context)
+	ChangePassword(c *gin.Context)
+	CreateUserPost(c *gin.Context)
 }
 
 type handler struct {
-	config *config.Config
+	config *common.Config
 	db     *gorm.DB
 	auth   *common.Auth
 }
 
-func NewHandler(config *config.Config, db *gorm.DB, auth *common.Auth) *handler {
+func NewHandler(config *common.Config, db *gorm.DB, auth *common.Auth) *handler {
 	return &handler{
 		db:     db,
 		config: config,

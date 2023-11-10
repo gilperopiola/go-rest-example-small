@@ -92,6 +92,7 @@ func (auth *Auth) ValidateToken(role Role, shouldMatchUserID bool) gin.HandlerFu
 
 		// Check if user ID in URL matches user ID in token
 		if shouldMatchUserID {
+			pathUserIDKey := "user_id"
 			urlUserID, err := getIntFromURLPath(c.Params, pathUserIDKey)
 			if err != nil || customClaims.ID != fmt.Sprint(urlUserID) {
 				c.Error(Wrap("!shouldMatchUserID", ErrUnauthorized))

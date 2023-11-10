@@ -13,25 +13,25 @@ func (h *handler) Login(c *gin.Context) {
 	HandleRequest(c, h.makeLoginRequest, h.login)
 }
 
-func (h *handler) makeLoginRequest(c *gin.Context) (req *common.LoginRequest, err error) {
+func (h *handler) makeLoginRequest(c *gin.Context) (req common.LoginRequest, err error) {
 
 	if err = c.ShouldBindJSON(&req); err != nil {
-		return &common.LoginRequest{}, common.Wrap(err.Error(), common.ErrBindingRequest)
+		return common.LoginRequest{}, common.Wrap(err.Error(), common.ErrBindingRequest)
 	}
 
 	if req.UsernameOrEmail == "" || req.Password == "" {
-		return &common.LoginRequest{}, common.Wrap("makeLoginRequest", common.ErrAllFieldsRequired)
+		return common.LoginRequest{}, common.Wrap("makeLoginRequest", common.ErrAllFieldsRequired)
 	}
 
 	return req, nil
 }
 
-func (h *handler) login(c *gin.Context, request *common.LoginRequest) (common.LoginResponse, error) {
+func (h *handler) login(c *gin.Context, request common.LoginRequest) (common.LoginResponse, error) {
 	user := request.ToUserModel()
 
 	// Get user
-	query := "(id = ? OR username = ? OR email = ?) AND deleted = false"
-	if err := h.db.Where(query, user.ID, user.Username, user.Email).First(&user).Error; err != nil {
+	query := "(username = ? OR email = ?) AND deleted = false"
+	if err := h.db.Where(query, user.Username, user.Email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return common.LoginResponse{}, common.Wrap(err.Error(), common.ErrUserNotFound)
 		}
@@ -39,7 +39,7 @@ func (h *handler) login(c *gin.Context, request *common.LoginRequest) (common.Lo
 	}
 
 	// Check password
-	if user.Password != common.Hash(request.Password, h.config.Auth.HashSalt) {
+	if user.Password != common.Hash(request.Password, h.config.HashSalt) {
 		return common.LoginResponse{}, common.Wrap("login: user.Password != common.Hash", common.ErrWrongPassword)
 	}
 

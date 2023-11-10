@@ -1,19 +1,15 @@
 package common
 
-import (
-	"regexp"
-)
-
 type AllRequests interface {
-	*SignupRequest |
-		*LoginRequest |
-		*CreateUserRequest |
-		*GetUserRequest |
-		*UpdateUserRequest |
-		*DeleteUserRequest |
-		*SearchUsersRequest |
-		*ChangePasswordRequest |
-		*CreateUserPostRequest
+	SignupRequest |
+		LoginRequest |
+		CreateUserRequest |
+		GetUserRequest |
+		UpdateUserRequest |
+		DeleteUserRequest |
+		SearchUsersRequest |
+		ChangePasswordRequest |
+		CreateUserPostRequest
 }
 
 /*---------------
@@ -39,12 +35,6 @@ type LoginRequest struct {
 	UsernameOrEmail string `json:"username_or_email"`
 	Password        string `json:"password"`
 }
-
-var (
-	pathUserIDKey = "user_id"
-
-	validEmailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-)
 
 /*---------------------
 //    CREATE USER

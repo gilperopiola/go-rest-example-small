@@ -13,17 +13,16 @@ func (h *handler) GetUser(c *gin.Context) {
 	HandleRequest(c, h.makeGetUserRequest, h.getUser)
 }
 
-func (h *handler) makeGetUserRequest(c *gin.Context) (req *common.GetUserRequest, err error) {
-
-	req = &common.GetUserRequest{UserID: c.GetInt(contextUserIDKey)}
+func (h *handler) makeGetUserRequest(c *gin.Context) (req common.GetUserRequest, err error) {
+	req.UserID = c.GetInt(contextUserIDKey)
 	if req.UserID == 0 {
-		return &common.GetUserRequest{}, common.ErrAllFieldsRequired
+		return common.GetUserRequest{}, common.ErrAllFieldsRequired
 	}
 
 	return req, nil
 }
 
-func (h *handler) getUser(c *gin.Context, request *common.GetUserRequest) (common.GetUserResponse, error) {
+func (h *handler) getUser(c *gin.Context, request common.GetUserRequest) (common.GetUserResponse, error) {
 	user := request.ToUserModel()
 
 	// Get user
